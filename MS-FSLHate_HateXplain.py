@@ -13,7 +13,6 @@ from sklearn.metrics import classification_report, roc_auc_score
 from sklearn.preprocessing import label_binarize
 from sklearn.utils.class_weight import compute_class_weight
 from nltk.corpus import wordnet
-import matplotlib.pyplot as plt
 import nltk
 
 # 如果需要下载 wordnet 数据，请取消下一行注释并运行一次
@@ -49,7 +48,7 @@ def synonym_replacement(tokens, prob=0.1):
     return new_tokens
 
 # ----------------------------
-# 词汇表构建（基于 token 列表）
+# 词汇表构建
 # ----------------------------
 def build_vocab(tokens_list, max_vocab_size=15000):
     special_tokens = ["<pad>", "<unk>", "@USER", "HASHTAG"]
@@ -67,8 +66,7 @@ def build_vocab(tokens_list, max_vocab_size=15000):
             vocab[term] = len(vocab)
     return vocab
 
-# ----------------------------
-# Token 列表转换为固定长度 ID 序列
+
 # ----------------------------
 def tokens_to_ids(tokens, vocab, max_length=128):
     ids = []
@@ -106,7 +104,7 @@ def create_datasets(train_path, val_path, test_path,
     val_s,   val_l   = load_dataset(val_path)
     test_s,  test_l  = load_dataset(test_path)
 
-    # 合并训练和验证
+    
     combined_s = train_s + val_s
     combined_l = np.concatenate([train_l, val_l], axis=0)
 
@@ -151,8 +149,6 @@ def create_datasets(train_path, val_path, test_path,
     return train_ds, test_ds, vocab, class_weights
 
 # ----------------------------
-# 改进的文本分类模型
-# ----------------------------
 class EnhancedClassifier(nn.Cell):
     def __init__(self, vocab_size, embed_dim, hidden_dim,
                  num_classes, prompt_length, dropout_keep_prob):
@@ -163,7 +159,7 @@ class EnhancedClassifier(nn.Cell):
                 'normal', (prompt_length, embed_dim)
             )
         )
-        self.conv = nn.SequentialCell([
+        self.conv = nn.SequentialCell([ 
             nn.Conv1d(embed_dim, 128, kernel_size=3, padding=1, pad_mode='pad'),
             nn.ReLU(),
             nn.MaxPool1d(2),
@@ -250,9 +246,9 @@ class CustomTrainOneStep(nn.TrainOneStepCell):
 def main():
     config = {
         # 数据路径 & 批大小
-        "train_path":       "昇思1/train_full.json",
-        "val_path":         "昇思1/val_full.json",
-        "test_path":        "昇思1/test_full.json",
+        "train_path":       "MS-FSLHate/train_full.json",
+        "val_path":         "MS-FSLHate/val_full.json",
+        "test_path":        "MS-FSLHate/test_full.json",
         "batch_size":       32,
         "max_length":       128,
 
@@ -270,7 +266,7 @@ def main():
         "min_lr":           1e-5,
 
         # 训练细节
-        "num_epochs":       15,
+        "num_epochs":       3,
         "grad_clip":        1.0,
 
         # 数据增强
@@ -327,7 +323,6 @@ def main():
     )
 
     # 训练 & 评估
-    epoch_losses = []
     for epoch in range(config["num_epochs"]):
         model.set_train()
         running_loss = 0.0
@@ -338,19 +333,10 @@ def main():
                 running_loss += loss.asnumpy()
                 avg_loss = running_loss / i
                 pbar.set_postfix(loss=f"{avg_loss:.4f}")
-        epoch_losses.append(avg_loss)
-        print(f"Epoch {epoch+1} | Train Loss: {avg_loss:.4f}")
 
         f1, auc, rpt = evaluate_model(model, test_ds)
         print(f"After Epoch {epoch+1} → Weighted F1={f1:.4f}, ROC AUC={auc:.4f}")
         print("Classification Report:\n", rpt)
-
-    # 绘制并保存损失曲线
-    plt.plot(range(1, config["num_epochs"]+1), epoch_losses, marker='o')
-    plt.xlabel("Epoch"); plt.ylabel("Train Loss")
-    plt.title("Training Loss Curve")
-    plt.savefig("train_loss_curve.png")
-    plt.show()
 
     # 保存最终模型
     ms.save_checkpoint(model, "final_model.ckpt")
