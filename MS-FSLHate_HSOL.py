@@ -10,7 +10,6 @@ from sklearn.metrics import classification_report, roc_auc_score
 from sklearn.preprocessing import label_binarize
 from sklearn.utils.class_weight import compute_class_weight
 from nltk.corpus import wordnet
-import matplotlib.pyplot as plt
 import nltk
 
 # 如果需要下载 wordnet 数据，请取消下一行注释并运行一次
@@ -37,7 +36,7 @@ def synonym_replacement(tokens, prob=0.1):
     return new_tokens
 
 # ----------------------------
-# 构建词表（仅基于训练集）
+# 构建词表
 # ----------------------------
 def build_vocab(tokens_list, max_size=20000):
     special = ["<pad>", "<unk>", "@USER", "HASHTAG"]
@@ -120,8 +119,8 @@ def create_datasets(csv_path, test_size, max_len, batch_size):
     return train_ds, test_ds, vocab, class_weights
 
 # ----------------------------
-# 改进的文本分类模型
-# ----------------------------
+# 模型
+
 class EnhancedClassifier(nn.Cell):
     def __init__(self, vocab_size, embed_dim, hidden_dim,
                  num_classes, prompt_len, dropout_prob):
@@ -130,7 +129,7 @@ class EnhancedClassifier(nn.Cell):
         self.prompt_emb = ms.Parameter(
             ms.common.initializer.initializer('normal', (prompt_len, embed_dim))
         )
-        self.conv = nn.SequentialCell([
+        self.conv = nn.SequentialCell([ 
             nn.Conv1d(embed_dim, 128, kernel_size=3, padding=1, pad_mode='pad'),
             nn.ReLU(),
             nn.MaxPool1d(2),
@@ -214,7 +213,7 @@ def evaluate_model(model, dataset, desc="Evaluating"):
 # ----------------------------
 def main():
     cfg = {
-        "csv_path":     "/mnt/workspace/昇思1/labeled_data.csv",
+        "csv_path":     "labeled_data.csv",
         "test_size":    0.2,
         "max_len":      128,
         "batch_size":   32,
@@ -226,7 +225,7 @@ def main():
         "learning_rate":5e-4,
         "min_lr":       1e-5,
         "weight_decay": 1e-5,
-        "num_epochs":   15,
+        "num_epochs":   10,
         "grad_clip":    1.0
     }
 
@@ -278,7 +277,6 @@ def main():
                                    cfg["grad_clip"])
 
     # 训练 & 评估循环
-    losses = []
     for epoch in range(cfg["num_epochs"]):
         model.set_train(True)
         running_loss = 0.0
@@ -289,18 +287,10 @@ def main():
                 running_loss += loss.asnumpy()
                 avg = running_loss / i
                 pbar.set_postfix(loss=f"{avg:.4f}")
-        losses.append(avg)
 
         f1, auc, rpt = evaluate_model(model, test_ds, desc=f"Evaluating Epoch {epoch+1}")
         print(f"\nAfter Epoch {epoch+1}: Weighted F1={f1:.4f}, ROC AUC={auc:.4f}")
         print(rpt)
-
-    # 绘制损失曲线
-    plt.plot(range(1, cfg["num_epochs"]+1), losses, marker='o')
-    plt.xlabel("Epoch"); plt.ylabel("Train Loss")
-    plt.title("Training Loss Curve")
-    plt.savefig("train_loss_curve.png")
-    plt.show()
 
     # 保存模型
     ms.save_checkpoint(model, "final_model.ckpt")
