@@ -36,7 +36,7 @@ nltk.download('wordnet', download_dir='./nltk_data')
 
 # 添加数据路径（确保代码可以找到资源）
 nltk.data.path.append('./nltk_data')
-
+```
 
 # 代码结构解析
 一、MS-FSLHate_HateXplain.py
