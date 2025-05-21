@@ -41,7 +41,6 @@ nltk.data.path.append('./nltk_data')
 # 代码结构解析
 一、MS-FSLHate_HateXplain.py
 
-
 1. compute_majority_label 函数
 从多个标注者的注释中提取标签。
 将标签统一转为小写，统计出现频率。
@@ -92,7 +91,7 @@ nltk.data.path.append('./nltk_data')
 
 9. CustomTrainOneStep 类
 自定义训练步骤单元。
-包含梯度计算与裁剪（clip by global norm）功能。
+包含梯度计算与裁剪功能。
 用于训练时控制梯度爆炸。
 
 10. main 函数
@@ -174,7 +173,7 @@ nltk.data.path.append('./nltk_data')
      pip install numpy pandas scikit-learn tqdm nltk
      ```
 
-3. **运行代码**
+4. **运行代码**
 运行脚本：python MS-FSLHate_HateXplain.py
 运行脚本：python MS-FSLHate_HSOL.py
 
